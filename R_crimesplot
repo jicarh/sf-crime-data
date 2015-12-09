@@ -1,0 +1,45 @@
+library(ggmap)
+library(readr)
+library(dplyr)
+install.packages("plotly")
+install.packages("htmlwidgets")
+library(plotly)
+
+data <- read_csv("../input/train.csv.zip")
+
+map <- readRDS("../input/sf_map_copyright_openstreetmap_contributors.rds")
+map<-get_map(location="sanfrancisco",zoom=12,source="osm")
+ggmap(map)
+
+data1 <- traindata[traindata$Category == c("ASSAULT", "NON.CRIMINAL", "WEAPON.LAWS", "OTHER.OFFENSES",
+                                           "WARRANTS", "LARCENY.THEFT"),]
+table(data1$Category)
+p <- ggmap(map) + stat_density2d(aes(x = X, y = Y, fill = ..level.., alpha = ..level..),
+                                 bins = 15, geom = "polygon", data = data1) +
+  scale_fill_gradient(low = "green", high = "red", name = "Crime\nDensity\nLevels") +
+  scale_alpha(range = c(0.25, 0.75), guide = FALSE)  +
+  facet_wrap(~Category, ncol =3) + ggtitle("San Francisco Crimes Heatmap by Category")                                                                                             
+p
+#Save
+ggsave("Heatmap_Crimes.png", p, width=14, height=10, units="in")
+
+
+
+
+# Only care about 3 values: year, month, day
+wdn3<-function(x) as.POSIXct(strftime(x, format="%Y-%m-%d 00:00:00"))
+traindata$d3=wdn3(traindata$Dates)
+traindata$Dates<-NULL
+# Number of thefts per day
+
+cd=summarise(group_by(traindata,Category,d3), Counts=length(d3))
+
+p <- ggplot(data = cd, aes(x = d3, y = Counts)) +
+  geom_point(aes(text = paste("Crime", Category)), size = 1)
+p
+
+
+qplot(d3, Counts, data=cd, colour=Category)
+
+ggplotly()
+
